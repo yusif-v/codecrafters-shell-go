@@ -12,6 +12,12 @@ type HandlerFunc func(args []string) error
 var handlers = map[string]HandlerFunc{
 	"echo": echoFunc,
 	"exit": exitFunc,
+	"type": typeFunc,
+}
+
+func echoFunc(args []string) error {
+	fmt.Println(strings.Join(args, " "))
+	return nil
 }
 
 func exitFunc(args []string) error {
@@ -19,8 +25,7 @@ func exitFunc(args []string) error {
 	return nil
 }
 
-func echoFunc(args []string) error {
-	fmt.Println(strings.Join(args, " "))
+func typeFunc(args []string) error {
 	return nil
 }
 
