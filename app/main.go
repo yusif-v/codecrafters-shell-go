@@ -10,11 +10,17 @@ import (
 type HandlerFunc func(args []string) error
 
 var handlers = map[string]HandlerFunc{
+	"echo": echoFunc,
 	"exit": exitFunc,
 }
 
 func exitFunc(args []string) error {
 	os.Exit(0)
+	return nil
+}
+
+func echoFunc(args []string) error {
+	fmt.Println(strings.Join(args, " "))
 	return nil
 }
 
