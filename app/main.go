@@ -4,17 +4,49 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 )
 
+type HandlerFunc func(args []string) error
+
+var handlers = map[string]HandlerFunc{
+	"exit": exitFunc,
+}
+
+func exitFunc(args []string) error {
+	os.Exit(0)
+	return nil
+}
+
 func main() {
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("$ ")
-		cmd, err := bufio.NewReader(os.Stdin).ReadString('\n')
+
+		command, err := reader.ReadString('\n')
 
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			os.Exit(1)
 		}
-		fmt.Println(cmd[:len(cmd)-1] + ": command not found")
+
+		line := strings.TrimSpace(command)
+		if line == "" {
+			continue
+		}
+
+		parts := strings.Fields(line)
+		cmd := parts[0]
+		args := parts[1:]
+
+		handler, ok := handlers[cmd]
+		if !ok {
+			fmt.Println(cmd[:len(cmd)-1] + ": command not found")
+			continue
+		}
+
+		if err := handler(args); err != nil {
+			fmt.Println("error:", err)
+		}
 	}
 }
