@@ -41,7 +41,7 @@ func main() {
 
 		handler, ok := handlers[cmd]
 		if !ok {
-			fmt.Println(cmd[:len(cmd)-1] + ": command not found")
+			fmt.Println(cmd + ": command not found")
 			continue
 		}
 
