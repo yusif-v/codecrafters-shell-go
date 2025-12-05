@@ -9,10 +9,14 @@ import (
 
 type HandlerFunc func(args []string) error
 
-var handlers = map[string]HandlerFunc{
-	"echo": echoFunc,
-	"exit": exitFunc,
-	"type": typeFunc,
+var handlers map[string]HandlerFunc
+
+func init() {
+	handlers = map[string]HandlerFunc{
+		"echo": echoFunc,
+		"exit": exitFunc,
+		"type": typeFunc,
+	}
 }
 
 func echoFunc(args []string) error {
@@ -26,6 +30,16 @@ func exitFunc(args []string) error {
 }
 
 func typeFunc(args []string) error {
+	if len(args) == 0 {
+		return nil
+	}
+	for _, cmd := range args {
+		if _, ok := handlers[cmd]; ok {
+			fmt.Println(cmd + " is a shell builtin")
+		} else {
+			fmt.Println(cmd + ": not found")
+		}
+	}
 	return nil
 }
 
