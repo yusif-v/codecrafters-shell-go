@@ -17,6 +17,7 @@ func init() {
 		"echo": echoFunc,
 		"exit": exitFunc,
 		"type": typeFunc,
+		"test": testFunc,
 	}
 }
 
@@ -49,6 +50,14 @@ func typeFunc(args []string) error {
 	return nil
 }
 
+func testFunc(args []string) error {
+	return nil
+}
+
+func treeFunc(args []string) error {
+	return nil
+}
+
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -72,8 +81,18 @@ func main() {
 
 		handler, ok := handlers[cmd]
 		if !ok {
-			fmt.Println(cmd + ": command not found")
-			continue
+			path, err := exec.LookPath(cmd)
+			if err == nil {
+				fmt.Println(cmd + ": command not found")
+				continue
+			}
+			execCmd := exec.Command(path, args...)
+			execCmd.Stdout = os.Stdout
+			execCmd.Stderr = os.Stderr
+			execCmd.Stdin = os.Stdin
+			if err := execCmd.Run(); err != nil {
+				fmt.Println("error:", err)
+			}
 		}
 
 		if err := handler(args); err != nil {
