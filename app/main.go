@@ -62,7 +62,7 @@ func pwdFunc(args []string) error {
 }
 
 func cdFunc(args []string) error {
-	err := os.Chdir(os.Args[0])
+	err := os.Chdir(args[0])
 	if err != nil {
 		return fmt.Errorf("cd: %v", err)
 	}
