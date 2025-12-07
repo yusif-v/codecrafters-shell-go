@@ -64,7 +64,7 @@ func pwdFunc(args []string) error {
 func cdFunc(args []string) error {
 	err := os.Chdir(args[0])
 	if err != nil {
-		return fmt.Errorf("cd: %v", err)
+		fmt.Printf("cd: %s: No such file or directory\n", args[0])
 	}
 	return nil
 }
