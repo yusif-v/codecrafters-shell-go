@@ -18,7 +18,7 @@ func init() {
 		"exit": exitFunc,
 		"type": typeFunc,
 		"pwd":  pwdFunc,
-		"cd":
+		"cd":   cdFunc,
 	}
 }
 
