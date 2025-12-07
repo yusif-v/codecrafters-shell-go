@@ -53,25 +53,24 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("$ ")
-
 		command, err := reader.ReadString('\n')
-
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			os.Exit(1)
 		}
-
 		line := strings.TrimSpace(command)
 		if line == "" {
 			continue
 		}
-
 		parts := strings.Fields(line)
 		cmd := parts[0]
 		args := parts[1:]
-
 		handler, ok := handlers[cmd]
-		if !ok {
+		if ok {
+			if err := handler(args); err != nil {
+				fmt.Println("error:", err)
+			}
+		} else {
 			path, err := exec.LookPath(cmd)
 			if err != nil {
 				fmt.Println(cmd + ": command not found")
@@ -85,10 +84,6 @@ func main() {
 			if err := execCmd.Run(); err != nil {
 				fmt.Println("error:", err)
 			}
-		}
-
-		if err := handler(args); err != nil {
-			fmt.Println("error:", err)
 		}
 	}
 }
