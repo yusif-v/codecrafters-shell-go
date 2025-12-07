@@ -62,9 +62,36 @@ func pwdFunc(args []string) error {
 }
 
 func cdFunc(args []string) error {
-	err := os.Chdir(args[0])
-	if err != nil {
-		fmt.Printf("cd: %s: No such file or directory\n", args[0])
+	if len(args) == 0 {
+		dir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		err = os.Chdir(dir)
+		if err != nil {
+			fmt.Printf("cd: %s: No such file or directory\n", dir)
+		}
+		return nil
+	} else if len(args) > 1 {
+		fmt.Println("too many arguments")
+		return nil
+	} else if len(args) == 1 {
+		if args[0] == "~" {
+			dir, err := os.UserHomeDir()
+			if err != nil {
+				return err
+			}
+			err = os.Chdir(dir)
+			if err != nil {
+				fmt.Printf("cd: %s: No such file or directory\n", dir)
+			}
+			return nil
+		}
+		err := os.Chdir(args[0])
+		if err != nil {
+			fmt.Printf("cd: %s: No such file or directory\n", args[0])
+		}
+		return nil
 	}
 	return nil
 }
