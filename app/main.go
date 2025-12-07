@@ -78,6 +78,7 @@ func main() {
 				continue
 			}
 			execCmd := exec.Command(path, args...)
+			execCmd.Args = append([]string{cmd}, args...)
 			execCmd.Stdout = os.Stdout
 			execCmd.Stderr = os.Stderr
 			execCmd.Stdin = os.Stdin
