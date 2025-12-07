@@ -18,6 +18,7 @@ func init() {
 		"exit": exitFunc,
 		"type": typeFunc,
 		"pwd":  pwdFunc,
+		"cd":
 	}
 }
 
@@ -57,6 +58,14 @@ func pwdFunc(args []string) error {
 	}
 
 	fmt.Println(dir)
+	return nil
+}
+
+func cdFunc(args []string) error {
+	err := os.Chdir(os.Args[0])
+	if err != nil {
+		return fmt.Errorf("cd: %v", err)
+	}
 	return nil
 }
 
