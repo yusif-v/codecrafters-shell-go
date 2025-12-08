@@ -23,7 +23,21 @@ func init() {
 }
 
 func echoFunc(args []string) error {
-	fmt.Println(strings.Join(args, " "))
+	merged := strings.Join(args, " ")
+	var result strings.Builder
+	inQuote := false
+	for _, ch := range merged {
+		if ch == '\'' {
+			inQuote = !inQuote
+			continue
+		}
+		if ch != ' ' || inQuote {
+			result.WriteRune(ch)
+		} else {
+			result.WriteRune(' ')
+		}
+	}
+	fmt.Println(result.String())
 	return nil
 }
 
