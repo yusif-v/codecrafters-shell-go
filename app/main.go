@@ -23,21 +23,7 @@ func init() {
 }
 
 func echoFunc(args []string) error {
-	merged := strings.Join(args, " ")
-	var result strings.Builder
-	inQuote := false
-	for _, ch := range merged {
-		if ch == '\'' {
-			inQuote = !inQuote
-			continue
-		}
-		if ch != ' ' || inQuote {
-			result.WriteRune(ch)
-		} else {
-			result.WriteRune(' ')
-		}
-	}
-	fmt.Println(result.String())
+	fmt.Println(strings.Join(args, " "))
 	return nil
 }
 
@@ -110,6 +96,29 @@ func cdFunc(args []string) error {
 	return nil
 }
 
+func parseCommand(line string) []string {
+	var args []string
+	var current strings.Builder
+	inQuote := false
+
+	for _, ch := range line {
+		if ch == '\'' {
+			inQuote = !inQuote
+			continue
+		}
+		if ch != ' ' || inQuote {
+			current.WriteRune(ch)
+		} else {
+			args = append(args, current.String())
+			current.Reset()
+		}
+	}
+	if current.Len() > 0 {
+		args = append(args, current.String())
+	}
+	return args
+}
+
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -125,7 +134,8 @@ func main() {
 			continue
 		}
 
-		parts := strings.Fields(line)
+		parts := parseCommand(line)
+
 		cmd := parts[0]
 		args := parts[1:]
 		handler, ok := handlers[cmd]
