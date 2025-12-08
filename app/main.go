@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode"
 )
 
 type HandlerFunc func(args []string) error
@@ -102,20 +103,25 @@ func parseCommand(line string) []string {
 	inQuote := false
 
 	for _, ch := range line {
-		if ch == '\'' {
+		switch ch {
+		case '\'':
 			inQuote = !inQuote
-			continue
-		}
-		if ch != ' ' || inQuote {
-			current.WriteRune(ch)
-		} else {
-			args = append(args, current.String())
-			current.Reset()
+
+		default:
+			if unicode.IsSpace(ch) && !inQuote {
+				if current.Len() > 0 {
+					args = append(args, current.String())
+					current.Reset()
+				}
+			} else {
+				current.WriteRune(ch)
+			}
 		}
 	}
 	if current.Len() > 0 {
 		args = append(args, current.String())
 	}
+
 	return args
 }
 
