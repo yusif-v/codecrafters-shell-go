@@ -13,6 +13,7 @@ type HandlerFunc func(args []string) error
 
 var handlers map[string]HandlerFunc
 
+// The Builtins
 func init() {
 	handlers = map[string]HandlerFunc{
 		"echo": echoFunc,
@@ -97,18 +98,28 @@ func cdFunc(args []string) error {
 	return nil
 }
 
+// Parse the input
 func parseCommand(line string) []string {
 	var args []string
 	var current strings.Builder
-	inQuote := false
-
+	inSingle := false
+	inDouble := false
 	for _, ch := range line {
 		switch ch {
+		case '"':
+			if !inSingle {
+				inDouble = !inDouble
+			} else {
+				current.WriteRune(ch)
+			}
 		case '\'':
-			inQuote = !inQuote
-
+			if !inDouble {
+				inSingle = !inSingle
+			} else {
+				current.WriteRune(ch)
+			}
 		default:
-			if unicode.IsSpace(ch) && !inQuote {
+			if unicode.IsSpace(ch) && !(inSingle || inDouble) {
 				if current.Len() > 0 {
 					args = append(args, current.String())
 					current.Reset()
@@ -121,10 +132,10 @@ func parseCommand(line string) []string {
 	if current.Len() > 0 {
 		args = append(args, current.String())
 	}
-
 	return args
 }
 
+// Main Loop
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
