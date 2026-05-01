@@ -30,7 +30,11 @@ func echoFunc(args []string) error {
 }
 
 func exitFunc(args []string) error {
-	os.Exit(0)
+	code := 0
+	if len(args) > 0 {
+		fmt.Sscanf(args[0], "%d", &code)
+	}
+	os.Exit(code)
 	return nil
 }
 
@@ -58,7 +62,6 @@ func pwdFunc(args []string) error {
 	if err != nil {
 		return err
 	}
-
 	fmt.Println(dir)
 	return nil
 }
@@ -77,44 +80,67 @@ func cdFunc(args []string) error {
 	} else if len(args) > 1 {
 		fmt.Println("too many arguments")
 		return nil
-	} else if len(args) == 1 {
-		if args[0] == "~" {
-			dir, err := os.UserHomeDir()
-			if err != nil {
-				return err
-			}
-			err = os.Chdir(dir)
-			if err != nil {
-				fmt.Printf("cd: %s: No such file or directory\n", dir)
-			}
-			return nil
-		}
-		err := os.Chdir(args[0])
+	}
+
+	target := args[0]
+	if target == "~" {
+		dir, err := os.UserHomeDir()
 		if err != nil {
-			fmt.Printf("cd: %s: No such file or directory\n", args[0])
+			return err
 		}
-		return nil
+		target = dir
+	}
+
+	err := os.Chdir(target)
+	if err != nil {
+		fmt.Printf("cd: %s: No such file or directory\n", args[0])
 	}
 	return nil
 }
 
-// Parse the input
+// Parse the input with backslash escaping support
 func parseCommand(line string) []string {
 	var args []string
 	var current strings.Builder
 	inSingle := false
 	inDouble := false
+	escaped := false
+
 	for _, ch := range line {
+		if escaped {
+			// Previous char was backslash outside quotes,
+			// this char is literal regardless of what it is
+			current.WriteRune(ch)
+			escaped = false
+			continue
+		}
+
 		switch ch {
+		case '\\':
+			if !inSingle && !inDouble {
+				// Backslash outside quotes: escape next character
+				escaped = true
+			} else {
+				// Inside quotes, backslash is literal (for now)
+				current.WriteRune(ch)
+			}
 		case '"':
 			if !inSingle {
-				inDouble = !inDouble
+				if !inDouble {
+					inDouble = true
+				} else {
+					inDouble = false
+				}
 			} else {
 				current.WriteRune(ch)
 			}
 		case '\'':
 			if !inDouble {
-				inSingle = !inSingle
+				if !inSingle {
+					inSingle = true
+				} else {
+					inSingle = false
+				}
 			} else {
 				current.WriteRune(ch)
 			}
@@ -124,11 +150,13 @@ func parseCommand(line string) []string {
 					args = append(args, current.String())
 					current.Reset()
 				}
+				// If current is empty, skip whitespace (handles multiple spaces between args)
 			} else {
 				current.WriteRune(ch)
 			}
 		}
 	}
+
 	if current.Len() > 0 {
 		args = append(args, current.String())
 	}
@@ -152,6 +180,9 @@ func main() {
 		}
 
 		parts := parseCommand(line)
+		if len(parts) == 0 {
+			continue
+		}
 
 		cmd := parts[0]
 		args := parts[1:]
@@ -163,7 +194,6 @@ func main() {
 			}
 		} else {
 			path, err := exec.LookPath(cmd)
-
 			if err != nil {
 				fmt.Println(cmd + ": command not found")
 				continue
