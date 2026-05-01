@@ -263,7 +263,9 @@ func main() {
 			execCmd.Stdin = os.Stdin
 
 			if err := execCmd.Run(); err != nil {
-				fmt.Fprintln(os.Stderr, "error:", err)
+				if _, ok := err.(*exec.ExitError); !ok {
+					fmt.Fprintln(os.Stderr, "error:", err)
+				}
 			}
 		}
 
