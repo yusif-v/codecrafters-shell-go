@@ -98,7 +98,6 @@ func cdFunc(args []string) error {
 	return nil
 }
 
-// Parse the input with backslash escaping support
 func parseCommand(line string) []string {
 	var args []string
 	var current strings.Builder
@@ -106,10 +105,8 @@ func parseCommand(line string) []string {
 	inDouble := false
 	escaped := false
 
-	for _, ch := range line {
+	for i, ch := range line {
 		if escaped {
-			// Previous char was backslash outside quotes,
-			// this char is literal regardless of what it is
 			current.WriteRune(ch)
 			escaped = false
 			continue
@@ -117,12 +114,22 @@ func parseCommand(line string) []string {
 
 		switch ch {
 		case '\\':
-			if !inSingle && !inDouble {
-				// Backslash outside quotes: escape next character
-				escaped = true
-			} else {
-				// Inside quotes, backslash is literal (for now)
+			if inSingle {
 				current.WriteRune(ch)
+			} else if inDouble {
+				nextIdx := i + 1
+				if nextIdx < len(line) {
+					nextCh := rune(line[nextIdx])
+					if nextCh == '"' || nextCh == '\\' || nextCh == '$' || nextCh == '`' || nextCh == '\n' {
+						escaped = true
+					} else {
+						current.WriteRune(ch)
+					}
+				} else {
+					current.WriteRune(ch)
+				}
+			} else {
+				escaped = true
 			}
 		case '"':
 			if !inSingle {
@@ -150,7 +157,6 @@ func parseCommand(line string) []string {
 					args = append(args, current.String())
 					current.Reset()
 				}
-				// If current is empty, skip whitespace (handles multiple spaces between args)
 			} else {
 				current.WriteRune(ch)
 			}
