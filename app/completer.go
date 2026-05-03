@@ -11,12 +11,14 @@ type ShellCompleter struct{}
 func (s *ShellCompleter) Do(line []rune, pos int) ([][]rune, int) {
 	prefix := string(line[:pos])
 
+	// Find start of current word
 	wordStart := pos
 	for wordStart > 0 && prefix[wordStart-1] != ' ' {
 		wordStart--
 	}
 	word := prefix[wordStart:]
 
+	// Are we on the first word? (only spaces before wordStart)
 	isFirstWord := true
 	for i := 0; i < wordStart; i++ {
 		if prefix[i] != ' ' {
@@ -47,6 +49,7 @@ func (s *ShellCompleter) completeCommand(word string) []string {
 	seen := make(map[string]bool)
 	var matches []string
 
+	// Builtins
 	for name := range handlers {
 		if strings.HasPrefix(name, word) && !seen[name] {
 			seen[name] = true
@@ -54,6 +57,7 @@ func (s *ShellCompleter) completeCommand(word string) []string {
 		}
 	}
 
+	// PATH executables
 	for _, dir := range filepath.SplitList(os.Getenv("PATH")) {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -72,6 +76,11 @@ func (s *ShellCompleter) completeCommand(word string) []string {
 				}
 			}
 		}
+	}
+
+	// KEY FIX: if exactly one match, append trailing space
+	if len(matches) == 1 {
+		matches[0] += " "
 	}
 
 	return matches
