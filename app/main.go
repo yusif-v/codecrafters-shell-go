@@ -10,11 +10,10 @@ import (
 	"unicode"
 )
 
-type HandlerFunc func(args []string, stdout io.Writer) error
+type HandlerFunc func(args []string, stdout, stderr io.Writer) error
 
 var handlers map[string]HandlerFunc
 
-// The Builtins
 func init() {
 	handlers = map[string]HandlerFunc{
 		"echo": echoFunc,
@@ -25,12 +24,12 @@ func init() {
 	}
 }
 
-func echoFunc(args []string, stdout io.Writer) error {
+func echoFunc(args []string, stdout, stderr io.Writer) error {
 	fmt.Fprintln(stdout, strings.Join(args, " "))
 	return nil
 }
 
-func exitFunc(args []string, stdout io.Writer) error {
+func exitFunc(args []string, stdout, stderr io.Writer) error {
 	code := 0
 	if len(args) > 0 {
 		fmt.Sscanf(args[0], "%d", &code)
@@ -39,7 +38,7 @@ func exitFunc(args []string, stdout io.Writer) error {
 	return nil
 }
 
-func typeFunc(args []string, stdout io.Writer) error {
+func typeFunc(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		return nil
 	}
@@ -58,7 +57,7 @@ func typeFunc(args []string, stdout io.Writer) error {
 	return nil
 }
 
-func pwdFunc(args []string, stdout io.Writer) error {
+func pwdFunc(args []string, stdout, stderr io.Writer) error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -67,7 +66,7 @@ func pwdFunc(args []string, stdout io.Writer) error {
 	return nil
 }
 
-func cdFunc(args []string, stdout io.Writer) error {
+func cdFunc(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		dir, err := os.UserHomeDir()
 		if err != nil {
@@ -99,7 +98,6 @@ func cdFunc(args []string, stdout io.Writer) error {
 	return nil
 }
 
-// Parse the input with backslash escaping support
 func parseCommand(line string) []string {
 	var args []string
 	var current strings.Builder
@@ -171,33 +169,39 @@ func parseCommand(line string) []string {
 	return args
 }
 
-// parseRedirection separates command args from output redirection
-func parseRedirection(args []string) ([]string, string, error) {
+// parseRedirection separates command args from stdout (>) and stderr (2>) redirections
+func parseRedirection(args []string) ([]string, string, string, error) {
 	var cmdArgs []string
-	var outputFile string
-	foundRedirect := false
+	var stdoutFile, stderrFile string
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == ">" || arg == "1>" {
-			if foundRedirect {
-				return nil, "", fmt.Errorf("multiple redirections not supported")
+			if stdoutFile != "" {
+				return nil, "", "", fmt.Errorf("multiple stdout redirections")
 			}
-			foundRedirect = true
 			if i+1 >= len(args) {
-				return nil, "", fmt.Errorf("no filename specified for redirection")
+				return nil, "", "", fmt.Errorf("no filename for stdout redirection")
 			}
-			outputFile = args[i+1]
-			i++ // skip the filename
+			stdoutFile = args[i+1]
+			i++
+		} else if arg == "2>" {
+			if stderrFile != "" {
+				return nil, "", "", fmt.Errorf("multiple stderr redirections")
+			}
+			if i+1 >= len(args) {
+				return nil, "", "", fmt.Errorf("no filename for stderr redirection")
+			}
+			stderrFile = args[i+1]
+			i++
 		} else {
 			cmdArgs = append(cmdArgs, arg)
 		}
 	}
 
-	return cmdArgs, outputFile, nil
+	return cmdArgs, stdoutFile, stderrFile, nil
 }
 
-// Main Loop
 func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -221,37 +225,52 @@ func main() {
 		cmd := parts[0]
 		args := parts[1:]
 
-		// Check for redirection
-		cmdArgs, outputFile, err := parseRedirection(args)
+		cmdArgs, stdoutFile, stderrFile, err := parseRedirection(args)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "error:", err)
 			continue
 		}
 
 		var stdout io.Writer = os.Stdout
-		var file *os.File
-		if outputFile != "" {
-			var err error
-			file, err = os.Create(outputFile)
+		var stderr io.Writer = os.Stderr
+		var outFile, errFile *os.File
+
+		if stdoutFile != "" {
+			outFile, err = os.Create(stdoutFile)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				continue
 			}
-			stdout = file
+			stdout = outFile
+		}
+
+		if stderrFile != "" {
+			errFile, err = os.Create(stderrFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				if outFile != nil {
+					outFile.Close()
+				}
+				continue
+			}
+			stderr = errFile
 		}
 
 		handler, ok := handlers[cmd]
 
 		if ok {
-			if err := handler(cmdArgs, stdout); err != nil {
+			if err := handler(cmdArgs, stdout, stderr); err != nil {
 				fmt.Fprintln(os.Stderr, "error:", err)
 			}
 		} else {
 			path, err := exec.LookPath(cmd)
 			if err != nil {
 				fmt.Println(cmd + ": command not found")
-				if file != nil {
-					file.Close()
+				if outFile != nil {
+					outFile.Close()
+				}
+				if errFile != nil {
+					errFile.Close()
 				}
 				continue
 			}
@@ -259,7 +278,7 @@ func main() {
 			execCmd := exec.Command(path, cmdArgs...)
 			execCmd.Args = append([]string{cmd}, cmdArgs...)
 			execCmd.Stdout = stdout
-			execCmd.Stderr = os.Stderr
+			execCmd.Stderr = stderr
 			execCmd.Stdin = os.Stdin
 
 			if err := execCmd.Run(); err != nil {
@@ -269,8 +288,11 @@ func main() {
 			}
 		}
 
-		if file != nil {
-			file.Close()
+		if outFile != nil {
+			outFile.Close()
+		}
+		if errFile != nil {
+			errFile.Close()
 		}
 	}
 }
