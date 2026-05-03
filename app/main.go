@@ -1,24 +1,42 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/chzyer/readline"
 )
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
+	rl, err := readline.NewEx(&readline.Config{
+		Prompt:          "$ ",
+		AutoComplete:    &ShellCompleter{},
+		HistoryFile:     "/tmp/codecrafters_shell_history",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "exit",
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error initializing readline:", err)
+		os.Exit(1)
+	}
+	defer rl.Close()
+
 	for {
-		fmt.Print("$ ")
-		command, err := reader.ReadString('\n')
+		line, err := rl.Readline()
+		if err == io.EOF {
+			break
+		}
+		if err == readline.ErrInterrupt {
+			continue
+		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error reading input:", err)
 			os.Exit(1)
 		}
 
-		line := strings.TrimSpace(command)
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
